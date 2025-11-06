@@ -3,7 +3,8 @@
 
 The Signedness Checker guarantees that signed and unsigned integral values are not mixed
 together in a computation. In addition, it prohibits meaningless operations, such
-as division on an unsigned value.
+as division on an unsigned value, and it ensures that bit patterns (values that represent
+patterns of bits rather than arithmetic quantities) are not used in arithmetic operations.
 
 Recall that a computer represents a number as a sequence of bits.
 Signedness indicates how to interpret the most significant bit.  For
@@ -67,6 +68,14 @@ These are the qualifiers in the signedness type system:
     That is, if the most significant bit in the bitwise representation is
     set, then the bits should be interpreted as a negative value.
     This is the default annotation.
+
+\item[\refqualclass{checker/signedness/qual}{BitPattern}]
+    indicates that the value represents a pattern of bits, not an arithmetic
+    quantity. Examples include the return value of \code{Double.doubleToLongBits}
+    and values used as bitsets. This annotation permits bitwise operations
+    (\code{\&}, \code{|}, \code{\^}, \code{\~{}}) and shifts
+    (\code{<<}, \code{>>}, \code{>>>}), but forbids arithmetic operations such as
+    addition, subtraction, multiplication, division, remainder, and comparisons.
 
 \item[\refqualclass{checker/signedness/qual}{SignedPositive}]
     indicates that a value is known at compile time to be in the non-negative

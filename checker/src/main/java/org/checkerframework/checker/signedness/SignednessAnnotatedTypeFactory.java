@@ -16,6 +16,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.checkerframework.checker.signedness.qual.BitPattern;
 import org.checkerframework.checker.signedness.qual.PolySigned;
 import org.checkerframework.checker.signedness.qual.Signed;
 import org.checkerframework.checker.signedness.qual.SignedPositive;
@@ -59,6 +60,10 @@ public class SignednessAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
 
   /** The @Unsigned annotation. */
   private final AnnotationMirror UNSIGNED = AnnotationBuilder.fromClass(elements, Unsigned.class);
+
+  /** The @BitPattern annotation. */
+  protected final AnnotationMirror BIT_PATTERN =
+      AnnotationBuilder.fromClass(elements, BitPattern.class);
 
   /** The @SignednessGlb annotation. Do not use @SignedPositive; use this instead. */
   private final AnnotationMirror SIGNEDNESS_GLB =
@@ -261,7 +266,7 @@ public class SignednessAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
 
   @Override
   protected TreeAnnotator createTreeAnnotator() {
-    return new ListTreeAnnotator(new SignednessTreeAnnotator(this), super.createTreeAnnotator());
+    return new ListTreeAnnotator(super.createTreeAnnotator(), new SignednessTreeAnnotator(this));
   }
 
   @Override
@@ -306,6 +311,24 @@ public class SignednessAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
             type.replaceAnnotations(lht.getPrimaryAnnotations());
           }
           break;
+        case AND:
+        case OR:
+        case XOR:
+          // Bitwise operations propagate BitPattern from either operand
+          // Check left operand first (like shifts)
+          AnnotatedTypeMirror leftBitwise = getAnnotatedType(tree.getLeftOperand());
+          AnnotatedTypeMirror rightBitwise = getAnnotatedType(tree.getRightOperand());
+          // If either operand is BitPattern, result is BitPattern
+          if (leftBitwise.hasPrimaryAnnotation(BitPattern.class)
+              || rightBitwise.hasPrimaryAnnotation(BitPattern.class)) {
+            // Prefer left operand's annotations if it's BitPattern
+            if (leftBitwise.hasPrimaryAnnotation(BitPattern.class)) {
+              type.replaceAnnotations(leftBitwise.getPrimaryAnnotations());
+            } else {
+              type.replaceAnnotations(rightBitwise.getPrimaryAnnotations());
+            }
+          }
+          break;
         default:
           // Do nothing
       }
@@ -317,6 +340,19 @@ public class SignednessAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
       if (TreeUtils.isStringCompoundConcatenation(tree)) {
         if (TypesUtils.isCharOrCharacter(TreeUtils.typeOf(tree.getExpression()))) {
           type.replaceAnnotation(SIGNED);
+        }
+      }
+      return null;
+    }
+
+    @Override
+    public Void visitUnary(com.sun.source.tree.UnaryTree tree, AnnotatedTypeMirror type) {
+      // Bitwise complement (~) on BitPattern returns BitPattern
+      if (tree.getKind() == Tree.Kind.BITWISE_COMPLEMENT) {
+        AnnotatedTypeMirror operandType = getAnnotatedType(tree.getExpression());
+        if (operandType.hasPrimaryAnnotation(
+            org.checkerframework.checker.signedness.qual.BitPattern.class)) {
+          type.replaceAnnotation(BIT_PATTERN);
         }
       }
       return null;
