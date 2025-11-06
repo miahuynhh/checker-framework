@@ -314,19 +314,16 @@ public class SignednessAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
         case AND:
         case OR:
         case XOR:
-          // Bitwise operations propagate BitPattern from either operand
-          // Check left operand first (like shifts)
+          // Bitwise operations: if either operand is BitPattern, result is BitPattern
           AnnotatedTypeMirror leftBitwise = getAnnotatedType(tree.getLeftOperand());
           AnnotatedTypeMirror rightBitwise = getAnnotatedType(tree.getRightOperand());
-          // If either operand is BitPattern, result is BitPattern
-          if (leftBitwise.hasPrimaryAnnotation(BitPattern.class)
-              || rightBitwise.hasPrimaryAnnotation(BitPattern.class)) {
-            // Prefer left operand's annotations if it's BitPattern
-            if (leftBitwise.hasPrimaryAnnotation(BitPattern.class)) {
-              type.replaceAnnotations(leftBitwise.getPrimaryAnnotations());
-            } else {
-              type.replaceAnnotations(rightBitwise.getPrimaryAnnotations());
-            }
+          boolean leftIsBitPattern =
+              AnnotationUtils.containsSame(leftBitwise.getEffectiveAnnotations(), BIT_PATTERN);
+          boolean rightIsBitPattern =
+              AnnotationUtils.containsSame(rightBitwise.getEffectiveAnnotations(), BIT_PATTERN);
+          if (leftIsBitPattern || rightIsBitPattern) {
+            type.clearPrimaryAnnotations();
+            type.addAnnotation(BIT_PATTERN);
           }
           break;
         default:
@@ -350,9 +347,8 @@ public class SignednessAnnotatedTypeFactory extends BaseAnnotatedTypeFactory {
       // Bitwise complement (~) on BitPattern returns BitPattern
       if (tree.getKind() == Tree.Kind.BITWISE_COMPLEMENT) {
         AnnotatedTypeMirror operandType = getAnnotatedType(tree.getExpression());
-        if (operandType.hasPrimaryAnnotation(
-            org.checkerframework.checker.signedness.qual.BitPattern.class)) {
-          type.replaceAnnotation(BIT_PATTERN);
+        if (operandType.hasPrimaryAnnotation(BIT_PATTERN)) {
+          type.replaceAnnotations(operandType.getPrimaryAnnotations());
         }
       }
       return null;

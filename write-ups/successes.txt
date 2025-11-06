@@ -1,0 +1,1 @@
+The LLM was great at helping me understand the huge existing codebase, documentation, and the issue. It was able to help me identify which part of the code base and documentation would be most relevant to understand for this specific issue.

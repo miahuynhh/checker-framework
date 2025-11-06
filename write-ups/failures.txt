@@ -1,0 +1,1 @@
+The LLM often tries to change the test itself to make its code pass, which is definitely not desirable. It also often goes down rabbit holes and needs redirection to get back on the right track/task.
